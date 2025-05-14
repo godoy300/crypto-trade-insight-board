@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, TrendingUp, TrendingDown } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, Star } from 'lucide-react';
 
 interface TradeTableProps {
   trades: Trade[];
@@ -22,7 +22,8 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
       : 0;
     return {
       ...trade,
-      riskReward
+      riskReward,
+      setup: trade.setup || 'Unknown'
     };
   });
   
@@ -66,11 +67,51 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
     };
   });
 
+  // Group trades by setup
+  const setupGroups = tradesWithRiskReward.reduce((groups, trade) => {
+    const setup = trade.setup || 'Unknown';
+    if (!groups[setup]) {
+      groups[setup] = [];
+    }
+    groups[setup].push(trade);
+    return groups;
+  }, {} as Record<string, typeof tradesWithRiskReward>);
+  
+  // Calculate metrics for each setup
+  const setupMetrics = Object.entries(setupGroups).map(([setup, trades]) => {
+    const totalTrades = trades.length;
+    const winTrades = trades.filter(t => t.result === 'WIN').length;
+    const winRate = totalTrades > 0 ? (winTrades / totalTrades) * 100 : 0;
+    
+    const totalPnl = trades.reduce((sum, t) => {
+      return sum + (t.result === 'WIN' 
+        ? t.margin * t.leverage * t.winPercentage 
+        : -t.margin * t.leverage * t.stopPercentage);
+    }, 0);
+    
+    const avgRiskReward = trades
+      .filter(t => t.riskReward > 0)
+      .reduce((sum, t) => sum + t.riskReward, 0) / 
+      (trades.filter(t => t.riskReward > 0).length || 1);
+    
+    const profitability = totalPnl / totalTrades;
+    
+    return {
+      setup,
+      totalTrades,
+      winTrades,
+      winRate: winRate.toFixed(2),
+      totalPnl: totalPnl.toFixed(2),
+      avgRiskReward: avgRiskReward.toFixed(2),
+      profitability: profitability.toFixed(2)
+    };
+  }).sort((a, b) => parseFloat(b.profitability) - parseFloat(a.profitability));
+
   return (
     <Card className="bg-card border-border">
       <CardHeader>
         <CardTitle>Trade Analysis</CardTitle>
-        <CardDescription>Detailed overview of trading operations and broker analysis</CardDescription>
+        <CardDescription>Detailed overview of trading operations, setups and broker analysis</CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="history" onValueChange={setActiveTab}>
@@ -78,6 +119,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
             <TabsTrigger value="history">Trade History</TabsTrigger>
             <TabsTrigger value="risk-reward">Risk/Reward Analysis</TabsTrigger>
             <TabsTrigger value="brokers">Broker Analysis</TabsTrigger>
+            <TabsTrigger value="setups">Setup Analysis</TabsTrigger>
           </TabsList>
           
           <TabsContent value="history">
@@ -87,6 +129,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Pair</TableHead>
+                    <TableHead>Setup</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Order</TableHead>
                     <TableHead>Result</TableHead>
@@ -106,6 +149,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                         {format(new Date(trade.date), "MMM dd")}
                       </TableCell>
                       <TableCell>{trade.pair}</TableCell>
+                      <TableCell>{trade.setup}</TableCell>
                       <TableCell>
                         <Badge variant={trade.type === 'LONG' ? 'default' : 'outline'}>
                           {trade.type}
@@ -146,6 +190,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Pair</TableHead>
+                    <TableHead>Setup</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead className="text-right">Stop %</TableHead>
                     <TableHead className="text-right">Target %</TableHead>
@@ -161,6 +206,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                         {format(new Date(trade.date), "MMM dd")}
                       </TableCell>
                       <TableCell>{trade.pair}</TableCell>
+                      <TableCell>{trade.setup}</TableCell>
                       <TableCell>
                         <Badge variant={trade.type === 'LONG' ? 'default' : 'outline'}>
                           {trade.type}
@@ -228,6 +274,60 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                         {parseFloat(metric.totalPnl) >= 0 ? '+' : ''}{metric.totalPnl}
                       </TableCell>
                       <TableCell className="text-right">{metric.avgOperationCost}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="setups">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Setup</TableHead>
+                    <TableHead className="text-right">Total Trades</TableHead>
+                    <TableHead className="text-right">Win Rate</TableHead>
+                    <TableHead className="text-right">Avg Risk/Reward</TableHead>
+                    <TableHead className="text-right">Total P&L</TableHead>
+                    <TableHead className="text-right">Profitability</TableHead>
+                    <TableHead>Ranking</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {setupMetrics.map((metric, index) => (
+                    <TableRow key={metric.setup}>
+                      <TableCell className="font-medium">{metric.setup}</TableCell>
+                      <TableCell className="text-right">{metric.totalTrades}</TableCell>
+                      <TableCell className="text-right">{metric.winRate}%</TableCell>
+                      <TableCell className="text-right">{metric.avgRiskReward}</TableCell>
+                      <TableCell className={`text-right ${parseFloat(metric.totalPnl) >= 0 ? 'text-profit' : 'text-loss'}`}>
+                        {parseFloat(metric.totalPnl) >= 0 ? '+' : ''}{metric.totalPnl}
+                      </TableCell>
+                      <TableCell className={`text-right ${parseFloat(metric.profitability) >= 0 ? 'text-profit' : 'text-loss'}`}>
+                        {parseFloat(metric.profitability) >= 0 ? '+' : ''}${metric.profitability}
+                      </TableCell>
+                      <TableCell>
+                        {index === 0 ? (
+                          <div className="flex items-center">
+                            <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                            <span className="text-yellow-500 font-medium">Best Setup</span>
+                          </div>
+                        ) : index === 1 ? (
+                          <div className="flex items-center">
+                            <Star className="w-4 h-4 text-gray-300 mr-1" />
+                            <span className="text-gray-400">2nd Best</span>
+                          </div>
+                        ) : index === 2 ? (
+                          <div className="flex items-center">
+                            <Star className="w-4 h-4 text-amber-600 mr-1" />
+                            <span className="text-amber-600">3rd Best</span>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">{index + 1}th</span>
+                        )}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

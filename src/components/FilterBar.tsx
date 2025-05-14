@@ -1,18 +1,37 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
+import React, { useState } from 'react';
+import { TradeFilters } from '../types/trade';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TradeFilters } from '../types/trade';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
 import { format } from 'date-fns';
-import { sampleTradeData } from '../data/sampleTradeData';
+import { Calendar as CalendarIcon, Search, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 
 interface FilterBarProps {
   filters: TradeFilters;
-  setFilters: React.Dispatch<React.SetStateAction<TradeFilters>>;
+  setFilters: (filters: TradeFilters) => void;
 }
+
+const setupOptions = [
+  'ALL',
+  'Breakout',
+  'Support/Resistance',
+  'Moving Average Cross',
+  'Trend Following',
+  'Range Trading'
+];
+
+const brokerOptions = [
+  'ALL',
+  'Binance',
+  'Coinbase',
+  'Kraken',
+  'Bybit',
+  'FTX'
+];
 
 const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => {
   const [startDate, setStartDate] = useState<Date | undefined>(
@@ -22,69 +41,50 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => {
     filters.endDate ? new Date(filters.endDate) : undefined
   );
 
-  // Get unique list of brokers from sample data
-  const brokers = useMemo(() => {
-    const uniqueBrokers = new Set<string>();
-    sampleTradeData.forEach(trade => {
-      if (trade.broker) {
-        uniqueBrokers.add(trade.broker);
-      }
+  // Handle date changes
+  const handleStartDateChange = (date: Date | undefined) => {
+    setStartDate(date);
+    setFilters({
+      ...filters,
+      startDate: date ? date.toISOString() : null
     });
-    return Array.from(uniqueBrokers);
-  }, []);
-
-  // Update filters when dates change
-  useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      startDate: startDate ? format(startDate, 'yyyy-MM-dd') : null,
-      endDate: endDate ? format(endDate, 'yyyy-MM-dd') : null,
-    }));
-  }, [startDate, endDate, setFilters]);
-
-  const handleTradeTypeChange = (value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      tradeType: value as TradeFilters['tradeType'],
-    }));
   };
 
-  const handleOrderTypeChange = (value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      orderType: value as TradeFilters['orderType'],
-    }));
+  const handleEndDateChange = (date: Date | undefined) => {
+    setEndDate(date);
+    setFilters({
+      ...filters,
+      endDate: date ? date.toISOString() : null
+    });
   };
 
-  const handleBrokerChange = (value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      broker: value as TradeFilters['broker'],
-    }));
-  };
-
-  const clearFilters = () => {
-    setStartDate(undefined);
-    setEndDate(undefined);
+  // Reset all filters
+  const resetFilters = () => {
     setFilters({
       tradeType: 'ALL',
       orderType: 'ALL',
       startDate: null,
       endDate: null,
       broker: 'ALL',
+      setup: 'ALL'
     });
+    setStartDate(undefined);
+    setEndDate(undefined);
   };
 
   return (
     <Card className="mb-6">
-      <CardContent className="p-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex-1 min-w-[150px]">
+      <CardContent className="py-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Trade Type Filter */}
             <Select
               value={filters.tradeType}
-              onValueChange={handleTradeTypeChange}
+              onValueChange={(value: any) =>
+                setFilters({ ...filters, tradeType: value })
+              }
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Trade Type" />
               </SelectTrigger>
               <SelectContent>
@@ -93,14 +93,15 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => {
                 <SelectItem value="SHORT">Short</SelectItem>
               </SelectContent>
             </Select>
-          </div>
 
-          <div className="flex-1 min-w-[150px]">
+            {/* Order Type Filter */}
             <Select
               value={filters.orderType}
-              onValueChange={handleOrderTypeChange}
+              onValueChange={(value: any) =>
+                setFilters({ ...filters, orderType: value })
+              }
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Order Type" />
               </SelectTrigger>
               <SelectContent>
@@ -109,70 +110,100 @@ const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => {
                 <SelectItem value="TAKER">Taker</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-
-          <div className="flex-1 min-w-[150px]">
+            
+            {/* Broker Filter */}
             <Select
-              value={filters.broker || 'ALL'}
-              onValueChange={handleBrokerChange}
+              value={filters.broker}
+              onValueChange={(value: any) =>
+                setFilters({ ...filters, broker: value })
+              }
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Broker" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="ALL">All Brokers</SelectItem>
-                {brokers.map((broker) => (
-                  <SelectItem key={broker} value={broker}>{broker}</SelectItem>
+                {brokerOptions.map(broker => (
+                  <SelectItem key={broker} value={broker}>
+                    {broker === 'ALL' ? 'All Brokers' : broker}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            
+            {/* Setup Filter */}
+            <Select
+              value={filters.setup}
+              onValueChange={(value: any) =>
+                setFilters({ ...filters, setup: value })
+              }
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Setup" />
+              </SelectTrigger>
+              <SelectContent>
+                {setupOptions.map(setup => (
+                  <SelectItem key={setup} value={setup}>
+                    {setup === 'ALL' ? 'All Setups' : setup}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Separator orientation="vertical" className="h-8 hidden sm:block" />
+
+            {/* Date Range Filter */}
+            <div className="flex items-center gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-[130px] justify-start"
+                    size="sm"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "MMM dd") : "Start Date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={handleStartDateChange}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              <span className="text-muted-foreground">to</span>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-[130px] justify-start"
+                    size="sm"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {endDate ? format(endDate, "MMM dd") : "End Date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={handleEndDateChange}
+                    disabled={(date) => startDate ? date < startDate : false}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
 
-          <div className="flex-1 min-w-[150px]">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  {startDate ? format(startDate, 'PPP') : 'Start Date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={startDate}
-                  onSelect={setStartDate}
-                  initialFocus
-                  className="p-3 pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={resetFilters} size="sm">
+              <X className="mr-2 h-4 w-4" />
+              Reset Filters
+            </Button>
           </div>
-
-          <div className="flex-1 min-w-[150px]">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
-                  {endDate ? format(endDate, 'PPP') : 'End Date'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="end">
-                <Calendar
-                  mode="single"
-                  selected={endDate}
-                  onSelect={setEndDate}
-                  initialFocus
-                  className="p-3 pointer-events-auto"
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <Button 
-            variant="outline" 
-            className="ml-auto" 
-            onClick={clearFilters}
-          >
-            Clear Filters
-          </Button>
         </div>
       </CardContent>
     </Card>

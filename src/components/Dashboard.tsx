@@ -8,8 +8,9 @@ import TradeResultsChart from './TradeResultsChart';
 import ReturnsDistribution from './ReturnsDistribution';
 import TradeTable from './TradeTable';
 import TradeCalculator from './TradeCalculator';
+import GoalsTracker from './GoalsTracker';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart2, Calculator, PieChart, Table } from 'lucide-react';
+import { BarChart2, Calculator, PieChart, Table, Target } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const [filters, setFilters] = useState<TradeFilters>({
@@ -18,11 +19,21 @@ const Dashboard: React.FC = () => {
     startDate: null,
     endDate: null,
     broker: 'ALL',
+    setup: 'ALL',
   });
+
+  // Add setup and broker information to sample data if not present
+  const enrichedTradeData = useMemo(() => {
+    return sampleTradeData.map(trade => ({
+      ...trade,
+      setup: trade.setup || ['Breakout', 'Support/Resistance', 'Moving Average Cross', 'Trend Following', 'Range Trading'][Math.floor(Math.random() * 5)],
+      broker: trade.broker || ['Binance', 'Coinbase', 'Kraken', 'Bybit', 'FTX'][Math.floor(Math.random() * 5)]
+    }));
+  }, []);
 
   // Filter trades based on current filters
   const filteredTrades = useMemo(() => {
-    return sampleTradeData.filter(trade => {
+    return enrichedTradeData.filter(trade => {
       // Filter by trade type
       if (filters.tradeType !== 'ALL' && trade.type !== filters.tradeType) {
         return false;
@@ -38,6 +49,11 @@ const Dashboard: React.FC = () => {
         return false;
       }
       
+      // Filter by setup
+      if (filters.setup !== 'ALL' && trade.setup !== filters.setup) {
+        return false;
+      }
+      
       // Filter by date range
       if (filters.startDate && new Date(trade.date) < new Date(filters.startDate)) {
         return false;
@@ -49,7 +65,7 @@ const Dashboard: React.FC = () => {
       
       return true;
     });
-  }, [filters]);
+  }, [enrichedTradeData, filters]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -63,7 +79,7 @@ const Dashboard: React.FC = () => {
       
       {/* Main Tabs Navigation */}
       <Tabs defaultValue="charts" className="mt-8">
-        <TabsList className="grid w-full grid-cols-4 mb-8">
+        <TabsList className="grid w-full grid-cols-5 mb-8">
           <TabsTrigger value="charts" className="flex items-center gap-2">
             <BarChart2 className="h-4 w-4" />
             <span>Charts</span>
@@ -75,6 +91,10 @@ const Dashboard: React.FC = () => {
           <TabsTrigger value="history" className="flex items-center gap-2">
             <Table className="h-4 w-4" />
             <span>Trade History</span>
+          </TabsTrigger>
+          <TabsTrigger value="goals" className="flex items-center gap-2">
+            <Target className="h-4 w-4" />
+            <span>Goals</span>
           </TabsTrigger>
           <TabsTrigger value="calculator" className="flex items-center gap-2">
             <Calculator className="h-4 w-4" />
@@ -92,6 +112,10 @@ const Dashboard: React.FC = () => {
         
         <TabsContent value="history">
           <TradeTable trades={filteredTrades} />
+        </TabsContent>
+        
+        <TabsContent value="goals">
+          <GoalsTracker />
         </TabsContent>
         
         <TabsContent value="calculator">

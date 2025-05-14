@@ -22,7 +22,9 @@ export interface Trade {
   operationCost: number;
   date: string;  // ISO date string
   pair: string;  // e.g. "BTC/USDT"
-  broker?: string; // Nova propriedade para a corretora
+  broker?: string; // Broker property
+  setup?: string; // New property for setup type
+  profitability?: number; // New property for profitability
 }
 
 export interface TradeFilters {
@@ -30,5 +32,16 @@ export interface TradeFilters {
   orderType: OrderType | 'ALL';
   startDate: string | null;
   endDate: string | null;
-  broker?: string | 'ALL'; // Nova propriedade para filtrar por corretora
+  broker?: string | 'ALL';
+  setup?: string | 'ALL'; // New filter for setup
+}
+
+export interface Goal {
+  id: string;
+  type: 'daily' | 'weekly' | 'quarterly' | 'semiannual' | 'annual';
+  category: 'income' | 'bankGrowth';
+  target: number;
+  current: number;
+  startDate: string;
+  endDate: string;
 }
