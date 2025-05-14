@@ -22,6 +22,7 @@ export interface Trade {
   operationCost: number;
   date: string;  // ISO date string
   pair: string;  // e.g. "BTC/USDT"
+  broker?: string; // Nova propriedade para a corretora
 }
 
 export interface TradeFilters {
@@ -29,4 +30,5 @@ export interface TradeFilters {
   orderType: OrderType | 'ALL';
   startDate: string | null;
   endDate: string | null;
+  broker?: string | 'ALL'; // Nova propriedade para filtrar por corretora
 }

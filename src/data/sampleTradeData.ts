@@ -5,6 +5,9 @@ import { Trade } from '../types/trade';
 const MAKER_FEE = 0.0002; // 0.02%
 const TAKER_FEE = 0.0006; // 0.06%
 
+// Lista de corretoras para dados de exemplo
+const brokers = ['Binance', 'FTX', 'Bybit', 'Kraken', 'Coinbase Pro'];
+
 // Function to calculate sample trade data
 const generateSampleTrades = (count: number): Trade[] => {
   const trades: Trade[] = [];
@@ -88,6 +91,9 @@ const generateSampleTrades = (count: number): Trade[] => {
     // Random pair
     const pair = pairs[Math.floor(Math.random() * pairs.length)];
     
+    // Random broker
+    const broker = brokers[Math.floor(Math.random() * brokers.length)];
+    
     trades.push({
       id: i,
       type,
@@ -106,7 +112,8 @@ const generateSampleTrades = (count: number): Trade[] => {
       entryFeeNormalized,
       operationCost,
       date: tradeDate.toISOString(),
-      pair
+      pair,
+      broker
     });
   }
   
@@ -139,6 +146,15 @@ export const calculateMetrics = (trades: Trade[]) => {
   
   const averageLeverage = trades.reduce((acc, trade) => acc + trade.leverage, 0) / totalTrades;
   
+  // Calcular a média de risco/retorno
+  const riskRewardRatios = trades
+    .filter(trade => trade.stopPercentage > 0)
+    .map(trade => trade.winPercentage / trade.stopPercentage);
+  
+  const averageRiskReward = riskRewardRatios.length > 0
+    ? riskRewardRatios.reduce((acc, ratio) => acc + ratio, 0) / riskRewardRatios.length
+    : 0;
+  
   return {
     totalTrades,
     winTrades,
@@ -149,6 +165,7 @@ export const calculateMetrics = (trades: Trade[]) => {
     takerTrades,
     longTrades,
     shortTrades,
-    averageLeverage: averageLeverage.toFixed(1)
+    averageLeverage: averageLeverage.toFixed(1),
+    averageRiskReward: averageRiskReward.toFixed(2)
   };
 };
