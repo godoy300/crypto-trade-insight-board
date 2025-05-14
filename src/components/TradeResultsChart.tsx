@@ -110,7 +110,7 @@ const TradeResultsChart: React.FC<TradeResultsChartProps> = ({ trades }) => {
                     borderColor: '#374151',
                     borderRadius: '0.5rem',
                   }}
-                  formatter={(value) => [`$${value}`, value > 0 ? 'Profit' : 'Loss']}
+                  formatter={(value: number) => [`$${value}`, value >= 0 ? 'Profit' : 'Loss']}
                 />
                 <Legend />
                 <Bar dataKey="Profit" name="Profit" fill="#22c55e" radius={[4, 4, 0, 0]} />

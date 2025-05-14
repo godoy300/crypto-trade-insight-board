@@ -7,6 +7,9 @@ import PerformanceMetrics from './PerformanceMetrics';
 import TradeResultsChart from './TradeResultsChart';
 import ReturnsDistribution from './ReturnsDistribution';
 import TradeTable from './TradeTable';
+import TradeCalculator from './TradeCalculator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart2, Calculator, PieChart, Table } from 'lucide-react';
 
 const Dashboard: React.FC = () => {
   const [filters, setFilters] = useState<TradeFilters>({
@@ -14,6 +17,7 @@ const Dashboard: React.FC = () => {
     orderType: 'ALL',
     startDate: null,
     endDate: null,
+    broker: 'ALL',
   });
 
   // Filter trades based on current filters
@@ -26,6 +30,11 @@ const Dashboard: React.FC = () => {
       
       // Filter by order type
       if (filters.orderType !== 'ALL' && trade.orderType !== filters.orderType) {
+        return false;
+      }
+      
+      // Filter by broker
+      if (filters.broker !== 'ALL' && trade.broker !== filters.broker) {
         return false;
       }
       
@@ -52,12 +61,43 @@ const Dashboard: React.FC = () => {
       {/* Performance Metrics */}
       <PerformanceMetrics trades={filteredTrades} />
       
-      {/* Charts */}
-      <TradeResultsChart trades={filteredTrades} />
-      <ReturnsDistribution trades={filteredTrades} />
-      
-      {/* Trade Table */}
-      <TradeTable trades={filteredTrades} />
+      {/* Main Tabs Navigation */}
+      <Tabs defaultValue="charts" className="mt-8">
+        <TabsList className="grid w-full grid-cols-4 mb-8">
+          <TabsTrigger value="charts" className="flex items-center gap-2">
+            <BarChart2 className="h-4 w-4" />
+            <span>Charts</span>
+          </TabsTrigger>
+          <TabsTrigger value="distribution" className="flex items-center gap-2">
+            <PieChart className="h-4 w-4" />
+            <span>Distribution</span>
+          </TabsTrigger>
+          <TabsTrigger value="history" className="flex items-center gap-2">
+            <Table className="h-4 w-4" />
+            <span>Trade History</span>
+          </TabsTrigger>
+          <TabsTrigger value="calculator" className="flex items-center gap-2">
+            <Calculator className="h-4 w-4" />
+            <span>Calculator</span>
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="charts">
+          <TradeResultsChart trades={filteredTrades} />
+        </TabsContent>
+        
+        <TabsContent value="distribution">
+          <ReturnsDistribution trades={filteredTrades} />
+        </TabsContent>
+        
+        <TabsContent value="history">
+          <TradeTable trades={filteredTrades} />
+        </TabsContent>
+        
+        <TabsContent value="calculator">
+          <TradeCalculator />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
