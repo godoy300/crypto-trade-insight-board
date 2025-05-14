@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,7 +62,17 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Trading specific colors
+				profit: '#22c55e', // Green for profits
+				loss: '#ef4444', // Red for losses
+				chart: {
+					bg: '#111827', // Dark background for charts
+					grid: '#374151', // Grid lines
+					tooltip: '#1f2937', // Tooltip background
+				},
+				maker: '#3b82f6', // Blue for maker orders
+				taker: '#8b5cf6', // Purple for taker orders
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
