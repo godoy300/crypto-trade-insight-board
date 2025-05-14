@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Calculator, TrendingUp, TrendingDown, Star } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, Star, Target, Flag } from 'lucide-react';
 
 interface TradeTableProps {
   trades: Trade[];
@@ -15,27 +15,45 @@ interface TradeTableProps {
 const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
   const [activeTab, setActiveTab] = useState<string>('history');
   
-  // Calculate risk/reward for each trade
-  const tradesWithRiskReward = trades.map(trade => {
+  // Calculate risk/reward and target prices for each trade
+  const tradesWithTargets = trades.map(trade => {
+    // Calculate risk/reward ratio
     const riskReward = trade.stopPercentage > 0 
       ? parseFloat((trade.winPercentage / trade.stopPercentage).toFixed(2)) 
       : 0;
+    
+    // Calculate target prices based on stop percentage and entry price
+    let target1Price = 0;
+    let target2Price = trade.target2Price || 0;
+    let target3Price = trade.target3Price || 0;
+    
+    if (trade.type === 'LONG') {
+      // For LONG positions: entry + (entry * stopPercentage)
+      target1Price = trade.entryPrice + (trade.entryPrice * trade.stopPercentage);
+    } else {
+      // For SHORT positions: entry - (entry * stopPercentage)
+      target1Price = trade.entryPrice - (trade.entryPrice * trade.stopPercentage);
+    }
+    
     return {
       ...trade,
       riskReward,
-      setup: trade.setup || 'Unknown'
+      setup: trade.setup || 'Unknown',
+      target1Price: parseFloat(target1Price.toFixed(2)),
+      target2Price,
+      target3Price
     };
   });
   
   // Group trades by broker
-  const brokerGroups = tradesWithRiskReward.reduce((groups, trade) => {
+  const brokerGroups = tradesWithTargets.reduce((groups, trade) => {
     const broker = trade.broker || 'Unknown';
     if (!groups[broker]) {
       groups[broker] = [];
     }
     groups[broker].push(trade);
     return groups;
-  }, {} as Record<string, typeof tradesWithRiskReward>);
+  }, {} as Record<string, typeof tradesWithTargets>);
   
   // Calculate metrics for each broker
   const brokerMetrics = Object.entries(brokerGroups).map(([broker, trades]) => {
@@ -68,14 +86,14 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
   });
 
   // Group trades by setup
-  const setupGroups = tradesWithRiskReward.reduce((groups, trade) => {
+  const setupGroups = tradesWithTargets.reduce((groups, trade) => {
     const setup = trade.setup || 'Unknown';
     if (!groups[setup]) {
       groups[setup] = [];
     }
     groups[setup].push(trade);
     return groups;
-  }, {} as Record<string, typeof tradesWithRiskReward>);
+  }, {} as Record<string, typeof tradesWithTargets>);
   
   // Calculate metrics for each setup
   const setupMetrics = Object.entries(setupGroups).map(([setup, trades]) => {
@@ -116,10 +134,26 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
       <CardContent>
         <Tabs defaultValue="history" onValueChange={setActiveTab}>
           <TabsList className="mb-6">
-            <TabsTrigger value="history">Trade History</TabsTrigger>
-            <TabsTrigger value="risk-reward">Risk/Reward Analysis</TabsTrigger>
-            <TabsTrigger value="brokers">Broker Analysis</TabsTrigger>
-            <TabsTrigger value="setups">Setup Analysis</TabsTrigger>
+            <TabsTrigger value="history">
+              <Table className="h-4 w-4 mr-1" />
+              Trade History
+            </TabsTrigger>
+            <TabsTrigger value="targets">
+              <Target className="h-4 w-4 mr-1" />
+              Target Analysis
+            </TabsTrigger>
+            <TabsTrigger value="risk-reward">
+              <Flag className="h-4 w-4 mr-1" />
+              Risk/Reward Analysis
+            </TabsTrigger>
+            <TabsTrigger value="brokers">
+              <TrendingUp className="h-4 w-4 mr-1" />
+              Broker Analysis
+            </TabsTrigger>
+            <TabsTrigger value="setups">
+              <Star className="h-4 w-4 mr-1" />
+              Setup Analysis
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="history">
@@ -143,7 +177,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tradesWithRiskReward.map((trade) => (
+                  {tradesWithTargets.map((trade) => (
                     <TableRow key={trade.id}>
                       <TableCell>
                         {format(new Date(trade.date), "MMM dd")}
@@ -183,6 +217,68 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
             </div>
           </TabsContent>
           
+          <TabsContent value="targets">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Pair</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Entry Price</TableHead>
+                    <TableHead className="text-right">Stop %</TableHead>
+                    <TableHead className="text-right">Target 1 (1:1)</TableHead>
+                    <TableHead className="text-right">Target 2</TableHead>
+                    <TableHead className="text-right">Target 3</TableHead>
+                    <TableHead className="text-right">Exit Price</TableHead>
+                    <TableHead>Position Value</TableHead>
+                    <TableHead>Target 1 Value</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {tradesWithTargets.map((trade) => {
+                    const positionValue = trade.margin * trade.leverage;
+                    const target1Value = positionValue * 0.5; // 50% of position value
+                    
+                    return (
+                      <TableRow key={trade.id}>
+                        <TableCell>{format(new Date(trade.date), "MMM dd")}</TableCell>
+                        <TableCell>{trade.pair}</TableCell>
+                        <TableCell>
+                          <Badge variant={trade.type === 'LONG' ? 'default' : 'outline'}>
+                            {trade.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">${trade.entryPrice.toLocaleString()}</TableCell>
+                        <TableCell className="text-right text-loss">
+                          {(trade.stopPercentage * 100).toFixed(2)}%
+                        </TableCell>
+                        <TableCell className="text-right text-profit font-medium">
+                          ${trade.target1Price.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {trade.target2Price ? '$' + trade.target2Price.toLocaleString() : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {trade.target3Price ? '$' + trade.target3Price.toLocaleString() : '-'}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ${trade.exitPrice.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ${positionValue.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          ${target1Value.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+          
           <TabsContent value="risk-reward">
             <div className="overflow-x-auto">
               <Table>
@@ -200,7 +296,7 @@ const TradeTable: React.FC<TradeTableProps> = ({ trades }) => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tradesWithRiskReward.map((trade) => (
+                  {tradesWithTargets.map((trade) => (
                     <TableRow key={trade.id}>
                       <TableCell>
                         {format(new Date(trade.date), "MMM dd")}

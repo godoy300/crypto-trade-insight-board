@@ -25,6 +25,9 @@ export interface Trade {
   broker?: string; // Broker property
   setup?: string; // New property for setup type
   profitability?: number; // New property for profitability
+  target1Price?: number; // Target 1 price (1:1 risk/reward)
+  target2Price?: number; // Target 2 price (manual)
+  target3Price?: number; // Target 3 price (manual)
 }
 
 export interface TradeFilters {
